@@ -25,7 +25,7 @@ const int RANGE_QUERY_THRESHOLD_TIMES = 10;
 #define VECTOR_FILTER_SELECTIVITY_THRESHOLD 0.03
 #define VECTOR_FILTER_SELECTIVITY_HIGH_BOUND 0.6
 #define MAX_K 4200
-// https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=AB48C5606D99B76204CD6A51067CFB7F?doi=10.1.1.75.5014&rep=rep1&type=pdf
+// https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=AB48C5606D99B76204CD6A51067CFB7F?doi=10.1.1.75.10014&rep=rep1&type=pdf
 float8 getKDistance(pairingheap *heap, int k, int nn_size);
 /**
  * postgres perf tutorial: https://www.youtube.com/watch?v=HghP4D72Noc
@@ -327,17 +327,17 @@ GetScanValue(IndexScanDesc scan,Vector** values,float8 * weights,bool is_knn,int
 		for(int i = 0;i < scan->numberOfOrderBys; i++){
 			weights[i] = DatumGetFloat8(scan->orderByData[i].w);
 			values[i] = DatumGetVector(scan->orderByData[i].sk_argument);
-			elog(INFO,"w: %lf",weights[i]);
+			// elog(INFO,"w: %lf",weights[i]);
 			PrintVector("vector knn: ",values[i]);
 		}
 	}else{
 		for(int i = 0;i < scan->numberOfKeys; i++){
 			weights[i] = DatumGetFloat8(scan->keyData[i].w);
 			values[i] = DatumGetVector(scan->keyData[0].sk_argument);
-			elog(INFO,"w: %lf",DatumGetFloat8(weights[i]));
+			// elog(INFO,"w: %lf",DatumGetFloat8(weights[i]));
 			PrintVector("vector range query: ",values[i]);
 		}
-		elog(INFO,"radius: %lf",DatumGetFloat8(scan->keyData[0].query));
+		// elog(INFO,"radius: %lf",DatumGetFloat8(scan->keyData[0].query));
 	}
 
 	// if (is_knn&&scan->orderByData->sk_flags & SK_ISNULL)
@@ -603,7 +603,7 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 		std::string filter_text = "";
 		if(scan->sourceText){
 			filter_text = extract_btree_filter(scan->sourceText);
-			elog(INFO,"vector search filter is %s",filter_text.c_str());
+			elog(INFO,"haha vector search filter is %s",filter_text.c_str());
 		}
 		// if(KNN_QUERY(scan)){
 		// 	so->result_ids->clear();
@@ -620,15 +620,18 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 		for(int i = 0;i < dimensions.size();i++){
 			if(KNN_QUERY(scan)){
 				(*so->weights)[i] = DatumGetFloat8(scan->orderByData[i].w);
-				// elog(INFO,"w: %.3lf",DatumGetFloat8(scan->orderByData[i].w));
+				elog(INFO,"w: %.3lf",DatumGetFloat8(scan->orderByData[i].w));
 				query_point = DatumGetVector(scan->orderByData[i].sk_argument);
 			}else{
 				(*so->weights)[i] = DatumGetFloat8(scan->keyData[i].w);
 				query_point = DatumGetVector(scan->keyData[i].sk_argument);
 			}
 			query_points.push_back(query_point->x);
+			// elog(INFO,"check1");
 			memcpy(query.data() + offset,query_point->x,sizeof(float) * dimensions[i]);
+			// elog(INFO,"check2");
 			offset += dimensions[i];
+			// elog(INFO,"check3");
 		}
 		if(dimensions.size() == 1){
 			(*so->weights)[0] = 1.0;
@@ -662,14 +665,16 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 				}else{
 					so->use_get_new_next = true;
 				}
+			}else if(dimensions.size() > 1){
+				so->use_get_new_next = true;
 			}
 			int query_records = a3v_index->query_records.load();
 			if(so->use_get_new_next && query_records >= A3V_HINT_QUERY_RECORDS && (scan->btree_index_selectivity > VECTOR_FILTER_SELECTIVITY_THRESHOLD || scan->btree_index_selectivity < 1.0e-10)){
-				elog(INFO,"use a3v index");
+				// elog(LOG,"use a3v index");
 				so->use_hard_hnsw = false;
-				// 6500
+				// 61000
 				if(scan->btree_index_selectivity > 1.0e-10){
-					scan->orderByData->KNNValues = std::min(MAX_K,(int)(scan->orderByData->KNNValues/scan->btree_index_selectivity));
+					scan->orderByData->KNNValues = std::min(MAX_K,(int)(scan->orderByData->KNNValues/scan->btree_index_selectivity*alpha_amplication));
 				}
 				scan->orderByData->KNNValues = max(scan->orderByData->KNNValues,a3v_top_k);
 				// elog(LOG,"a3v_top_k: %d",a3v_top_k);
@@ -679,7 +684,7 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 				// elog(INFO,"result_pqs.top().first: %.2lf",result_pqs.top().first);
 				// a3v_index->last_top_k_mean =  (a3v_index->last_top_k_mean * (a3v_index->query_records - (A3V_HINT_QUERY_RECORDS-1)-1) + result_pqs.top().first)/(a3v_index->query_records - (A3V_HINT_QUERY_RECORDS-1));
 				// a3v_index->last_top_k_mean = max(a3v_index->last_top_k_mean,top_k_based_distance);
-				// a3v index 0.75, distance: 1.50, query_records: 2, alpha_amplication: 1.47
+				// a3v index 0.75, distance: 1.100, query_records: 2, alpha_amplication: 1.47
 				// elog(LOG,"a3v index %.2lf, distance: %.2lf, query_records: %d, alpha_amplication: %.2lf",a3v_index->last_top_k_mean,result_pqs.top().first,(a3v_index->query_records - 1),alpha_amplication);
 				// elog(INFO,"result_pqs's size %d",so->result_ids->size());
 				while(!result_pqs.empty()){
@@ -695,7 +700,7 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 					filter_amplication_k = scan->orderByData->KNNValues;
 				}
 				std::string hard_hnsws_prefix_path = build_hnsw_index_file_hard_path_prefix(index);
-				so->hard_hnsws = new MultiColumnHnsw(memory_init.hard_hnsws[hard_hnsws_prefix_path],query_points,scan->orderByData->KNNValues,scan->xs_inorder,1300,*(so->weights),filter_amplication_k,std::string(RelationGetRelationName(heap_rel)),filter_text,scan->heapRelation,scan);
+				so->hard_hnsws = new MultiColumnHnsw(memory_init.hard_hnsws[hard_hnsws_prefix_path],query_points,scan->orderByData->KNNValues,scan->xs_inorder,130,*(so->weights),filter_amplication_k,std::string(RelationGetRelationName(heap_rel)),filter_text,scan->heapRelation,scan);
 				so->result_idx = 0;so->result_ids->clear();
 				bool has_next = false;
 				if(so->search_type == SingleSearchType){
@@ -718,7 +723,7 @@ bool MemoryA3vIndexGetTuple(IndexScanDesc scan,ItemPointerData& result_tid){
 				}
 				if(hnsw_auxiilary_init && a3v_index->query_records.load() == 0 && enable_hnsw_crack_init){
 					elog(INFO,"send KNN_QUERY_HNSW_INIT_MESSAGE message");
-					MultiColumnHnsw* send_hard_hnsws = new MultiColumnHnsw(memory_init.hard_hnsws[hard_hnsws_prefix_path],query_points,scan->orderByData->KNNValues,scan->xs_inorder,1300,*(so->weights),filter_amplication_k,std::string(RelationGetRelationName(heap_rel)),filter_text,scan->heapRelation,scan);
+					MultiColumnHnsw* send_hard_hnsws = new MultiColumnHnsw(memory_init.hard_hnsws[hard_hnsws_prefix_path],query_points,scan->orderByData->KNNValues,scan->xs_inorder,130,*(so->weights),filter_amplication_k,std::string(RelationGetRelationName(heap_rel)),filter_text,scan->heapRelation,scan);
 					auto message = std::make_shared<Message>(KNN_QUERY_HNSW_INIT_MESSAGE,a3v_label,index_file_path,std::make_shared<std::vector<float>>(query),scan->orderByData->KNNValues,0.0,std::make_shared<std::vector<int>>(dimensions),std::make_shared<std::vector<float>>(*so->weights));
 					message->send_hard_hnsws = send_hard_hnsws;
 					A3vAsyncSendServer(message);
@@ -831,10 +836,10 @@ void debug_weights(IndexScanDesc scan,bool is_knn){
 		}
 	}else{
 		for(int i = 0;i < scan->numberOfKeys; i++){
-			elog(INFO,"w: %lf",DatumGetFloat8(scan->keyData[i].w));
+			// elog(INFO,"w: %lf",DatumGetFloat8(scan->keyData[i].w));
 			PrintVector("vector range query: ",DatumGetVector(scan->keyData[i].sk_argument));
 		}
-		elog(INFO,"radius: %lf",DatumGetFloat8(scan->keyData[0].query));
+		// elog(INFO,"radius: %lf",DatumGetFloat8(scan->keyData[0].query));
 	}
 }
 

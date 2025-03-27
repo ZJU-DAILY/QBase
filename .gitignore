@@ -74,3 +74,15 @@ logfile
 /logfile
 test.sql
 contrib/m3v/src/a3v/multi_top_k_ref
+/qdrant*
+/milvus_container_data*
+/contrib/m3v/*
+/food_ground_truth/*
+/hybrid_queries/*
+/overlaps_experiments/*
+/plan_check_experiments/*
+/plan_check_experiments/*
+/rate_check_experiments/*
+/reviews_experiments/*
+/pgvector*
+/pgvector

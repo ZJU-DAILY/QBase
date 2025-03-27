@@ -29,7 +29,7 @@ void A3vAsyncRecieveServer() {
                 a3v_index->KnnCrackSearch(*data->weights,data->query_point->data(),data->k,result_pq,*data->dimensions,a3v_index->last_top_k_mean,true);
                 a3v_index->query_records.fetch_add(1);
                 a3v_index->last_top_k_mean =  (a3v_index->last_top_k_mean * (a3v_index->query_records -1) + result_pq.top().first)/(a3v_index->query_records);
-                elog(LOG,"a3v_index->last_top_k_mean: %.2lf", a3v_index->last_top_k_mean);
+                // elog(LOG,"a3v_index->last_top_k_mean: %.2lf", a3v_index->last_top_k_mean);
             }else if(data->query_type == RANGE_QUERY_MESSAGE){
                 std::vector<PQNode> result_ids;
                 a3v_index->RangeCrackSearch(*data->weights,data->query_point->data(),data->radius,result_ids,*data->dimensions);

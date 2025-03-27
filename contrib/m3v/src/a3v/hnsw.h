@@ -29,7 +29,7 @@ class MultiColumnHnsw{
 		MultiColumnHnsw(std::vector<std::shared_ptr<hnswlib::HierarchicalNSW<float>>> &hnsws_,std::vector<float*> &query_points_,
 		int k_,bool &xs_inorder_scan_,float range_,std::vector<float> &weights_,int filter_amplication_k_,std::string relname_text_,
 		std::string filter_text_,Relation heap_rel_,IndexScanDesc scan_):
-		inRange(false),distanceThreshold(3),distanceQueueThreshold(50),
+		inRange(false),distanceThreshold(2.0),distanceQueueThreshold(20),
 		hnsws(hnsws_),query_points(query_points_),k(k_),xs_inorder_scan(xs_inorder_scan_),range(range_),RangeTimes(0),weights(weights_),
 		filter_amplication_k(filter_amplication_k_),filter_text(filter_text_),relname_text(relname_text_),heap_rel(heap_rel_),scan(scan_)
 		{
@@ -67,8 +67,8 @@ class MultiColumnHnsw{
 		int k;
 		bool& xs_inorder_scan;
 		float range;
-		float distanceQueueThreshold{50};
-		int	  distanceThreshold{3};
+		float distanceQueueThreshold{30};
+		int	  distanceThreshold{2};
 		bool  inRange{false};
 		int   RangeTimes{0};
 		int   filter_amplication_k;

@@ -77,6 +77,7 @@ bool MultiColumnHnsw::RangeNext(){
 
 bool MultiColumnHnsw::GetSingleNext(){
     auto result = hnsws_iterators[0]->Next();
+    // elog(INFO,"range: %d",range);
     if(result->HasResult()){
         result_tid = GetItemPointerDataByNumber(result->GetLabel());
         label = result->GetLabel();

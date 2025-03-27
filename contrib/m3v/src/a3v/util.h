@@ -9,9 +9,9 @@ extern "C"
 }
 #endif
 static bool hnsw_auxiilary_init = true;
-static int hnsw_single_top_k = 200;
+static int hnsw_single_top_k = 1200;
 static int a3v_top_k = 0;
-static double top_k_based_distance = 0;
+static double top_k_based_distance = 1.0;
 #include <iostream>
 #include <vector>
 #include "m3v.h"
